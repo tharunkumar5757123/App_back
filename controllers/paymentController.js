@@ -115,18 +115,31 @@ const createCheckoutSession = async (req, res) => {
       return res.status(400).json({ message: "No events selected for payment" });
     }
 
-    const lineItems = cart.map((event) => ({
-      price_data: {
-        currency: "inr",
-        product_data: {
-          name: event.title || event.name || "Event Ticket",
-          description: event.location || event.category || "Event booking",
-          images: event.image ? [event.image] : [],
+    if (!process.env.FRONTEND_URL) {
+      return res.status(500).json({ message: "FRONTEND_URL is not set in .env" });
+    }
+
+    const lineItems = cart.map((event) => {
+      const price = Number(event.price);
+      if (isNaN(price)) {
+        throw new Error(`Invalid price for event ${event.title || event._id}`);
+      }
+
+      return {
+        price_data: {
+          currency: "inr",
+          product_data: {
+            name: event.title || "Event Ticket",
+            description: event.venue || "Event Booking",
+            images: event.image ? [event.image] : [],
+          },
+          unit_amount: Math.round(price * 100),
         },
-        unit_amount: Math.round(event.price * 100),
-      },
-      quantity: event.quantity || 1,
-    }));
+        quantity: event.quantity || 1,
+      };
+    });
+
+    console.log("Creating Stripe session:", { lineItems, userId });
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
@@ -140,9 +153,9 @@ const createCheckoutSession = async (req, res) => {
       },
     });
 
-    res.json({ url: session.url });
+    res.status(200).json({ url: session.url });
   } catch (err) {
-    console.error("❌ Stripe checkout session error:", err.message);
+    console.error("❌ Stripe checkout session error:", err.message, err.raw || err);
     res.status(500).json({
       message: "Failed to create Stripe checkout session",
       error: err.message,
