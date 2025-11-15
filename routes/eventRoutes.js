@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 
 const {
-  createEvent,
+  createEvent,                        
   getAllEvents,
   getEventsByHost,
   getEventById,
@@ -12,6 +12,7 @@ const {
 
 const { protect, authorize } = require("../middleware/authMiddleware");
 const upload = require("../middleware/uploadMiddleware");
+
 
 // Public routes
 router.get("/", getAllEvents);
